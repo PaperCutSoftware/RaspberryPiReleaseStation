@@ -110,6 +110,13 @@ sudo apt-get autoremove
 sudo apt-get autoclean
 echo
 
+sudo sed -i -e '/trap.*2/d' /etc/profile
+
+sudo sed -i -e '3i\
+trap \'\' 2
+
+' /etc/profile
+
 if [[ -z "$UPGRADE" ]] ; then
 
   echo About to run various setup  programs. Please configure your locale, keyboard and timezone.
@@ -304,7 +311,7 @@ sudo sed -i -re '/config-(hostname|wifi)/d;/exit 0/i\
 ' /etc/rc.local
 
 
-if [[ "pi" -eq "$USER" ]] ; then
+if [[ "pi" -eq "$USER" -eq "pi" ]] ; then
     echo "The default account is still named \"$USER\". This should be changed for security reasons"
     if [[ $(ask "Do you wish to rename the $USER user account?[y/N] ") =~ ^[Yy]$ ]] ; then
 

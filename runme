@@ -1,0 +1,333 @@
+#!/usr/bin/env bash
+
+# Install the PaperCut Release Client on a Raspberry Pi Computer.
+# Copyright PaperCut software 2016 under the terms of the GNU Open Source
+# License Version 3.
+
+# Some information and techniques take from
+#   :https://github.com/RPi-Distro/raspi-config
+#   :https://github.com/alecthegeek/CCHS_Raspian_for_IoT/
+
+# This script may be run as often as needed.
+
+_FREESPACEWANTED=500 # MByte of free space required to install
+FREESPACEWANTED=$_FREESPACEWANTED
+UPGRADE=""  # Default to full install
+
+SERVER_PORT=9191      # Default secure port
+SERVER_IP="Edit Me"   # Prompt System Admin after install
+SERVER_NAME="Edit Me" # Prompt System Admin after install
+DOWNLOAD_URL=http://cdn.papercut.com/files/pcng/current/pcng-setup-linux-x64.sh
+
+ask() {
+    read -p "$1" -r < /dev/tty
+    echo $REPLY
+}
+
+usage() {
+    #TODO Get short-url
+    echo 'wget short-url -O - | bash  -i <server-ip> -n <server-name> [-f <installer-file>] [-u] [-s]'
+    echo -i PaperCut server IP addresss xxx.xxx.xxx.xxx
+    echo -n PaperCut server Network IP name e.g. papercut.example.com
+    echo -f is the name of the PaperCut installer file, If not present the script will attempt to download an installer
+    echo -u Only upgrade the software
+    echo -s Skip the check of free disk space. Useful with -u
+    echo -h Print this help text
+    exit
+}
+
+while getopts :i:n:p:f:uh FLAG ; do
+    case $FLAG in
+
+    h) usage
+      ;;
+
+    u) UPGRADE=YES
+      ;;
+
+    s) FREESPACEWANTED=""
+      ;;
+
+    i) SERVER_IP=$OPTARG
+      ;;
+
+    n) SERVER_NAME=$OPTARG
+      ;;
+
+    p) SERVER_PORT=$OPTARG
+      ;;
+
+    f) INSTALLER_FILE=$OPTARG
+      ;;
+
+    \?) usage
+      ;;
+    esac
+done
+
+# START HERE
+
+if [[ ! -d ~papercut && -n "$UPGRADE" ]] ; then
+  echo User papercut does not exist. Upgrade option is being ignored
+  UPGRADE=""
+  if [[ -z "$FREESPACEWANTED" ]] ; then
+    FREESPACEWANTED=$_FREESPACEWANTED
+    echo also checking for $FREESPACEWANTED free disk space has been re-enabled.
+  fi
+fi
+
+if [[ -n "$FREESPACEWANTED" && $(df -m --output=avail / | tail -1) -lt $FREESPACEWANTED ]] ; then
+  echo Insufficuent disk space -- Please there is at least $FREESPACEWANTED Mb and run run again
+  if [[ $(df -m --output=size / | tail -1) -lt 2800 ]] ; then
+    echo N.B. If you have NOT already autosized your image to fit all the space on the SD card
+    echo 'I can resize the image for you to 3G which will be enough if you are using Jessie "lite"'
+    if [[ $(ask "Do you want to resize the SD card image to 3G?  [N/y]") =~ [Yy] ]] ; then
+      sudo parted /dev/mmcblk0  resizepart 2 3G
+      sudo resize2fs /dev/mmcblk0p2
+      echo The Pi will now reboot emmdialty to complete the resize. Please rerun $0 again
+      ask "Press any key to continue"
+      sudo init 6
+    fi
+    echo Note you can manualy resize the SD card from by running the command \"sudo raspi-config\"
+  fi
+  exit -1
+fi
+
+if [[ ! -f /etc/issue ]] ; then
+    echo Please run this script on Raspian Linux.
+    echo You can download this from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
+    echo 'The Lite version is recommended to save space, but the full version will also work'
+    exit
+fi
+
+echo About to upgrade Raspian to the latest version -- this may take some time
+
+sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
+
+echo About to install X Windows and the Java runtime if required -- this may take some time
+sudo apt-get install -y xorg xinit openjdk-8-jre pwgen
+sudo apt-get autoremove
+sudo apt-get autoclean
+echo
+
+if [[ -z "$UPGRADE" ]] ; then
+
+  echo About to run various setup  programs. Please configure your locale, keyboard and timezone.
+  echo 'NB You will need a physical keyboard attached to the Pi (even if using a remote ssh connection)'
+  ask "Press any key to continue"
+
+
+  sudo dpkg-reconfigure keyboard-configuration
+  sudo dpkg-reconfigure locales
+  sudo dpkg-reconfigure tzdata
+
+
+  PP_PW=$(pwgen 18 1)
+
+  sudo userdel -fr papercut
+
+  (echo $PP_PW; echo $PP_PW ) | sudo adduser papercut --gecos "PaperCut Admin User" --home /usr/local/papercut
+
+  echo
+  echo PaperCut admin user created with secure password. For security resons you cannot log in as papercut
+  echo
+else
+  sudo rm -rf ~papercut/release
+fi
+
+if [[ -z "$INSTALLER_FILE" ]] ; then
+    INSTALLER_FILE=/tmp/${DOWNLOAD_URL##*/}
+    wget $DOWNLOAD_URL  -O $INSTALLER_FILE
+fi
+
+if [[ ! -e "$INSTALLER_FILE" ]] ; then
+    echo Can\'t find installer file $INSTALLER_FILE
+    exit
+fi
+
+chmod aog+x "$INSTALLER_FILE"
+
+sudo -u papercut "$INSTALLER_FILE" -e -- -C ~papercut/.. --checkpoint=.1000 --exclude papercut/release/runtime papercut/release
+
+if [[ ! -d ~papercut/release ]] ; then
+  echo Failed to unpack the installer. Please download again
+  exit -1
+fi
+
+find ~papercut -name \*.jar.pack -exec sh -c 'echo Unpacking $1 && sudo -u papercut unpack200 $1 ${1%%.pack}' sh {} \;
+
+sudo -u papercut chmod ugo+x ~papercut/release/*.sh
+
+[[ -e  ~papercut/release-station.log ]] &&
+    sudo rm ~papercut/release-station.log
+
+sudo touch  /var/log/release-station.log
+sudo ln -s /var/log/release-station.log ~papercut/release-station.log
+sudo chown papercut:papercut /var/log/release-station.log
+sudo chown papercut:papercut ~papercut/release-station.log
+
+if [[ -z "$UPGRADE" ]] ; then
+
+  sudo tee  /boot/pc-connection.properties <<EOF
+server-ip=$SERVER_IP
+server-port=$SERVER_PORT
+server-name=$SERVER_NAME
+EOF
+
+  sudo mv ~papercut/release/config.properties  /boot/pc-config.properties
+  # sudo mv ~papercut/release/client-machine-aliases.properties /boot/client-machine-aliases.properties
+fi
+
+
+for i in connection.properties config.properties ; do
+  [[ -e ~papercut/release/$i  ]] && sudo rm ~papercut/release/$i
+  sudo ln -s /boot/pc-$i ~papercut/release/$i
+  sudo chown papercut:papercut  ~papercut/releae/$i
+done
+
+# Make Pi boot into user papercut text mode
+if  command -v systemctl > /dev/null && systemctl | grep -q '^\-\.mount' ; then
+    sudo systemctl set-default multi-user.target
+    sudo cp  /etc/systemd/system/autologin@.service  /etc/systemd/system/autologin_papercut@.service
+    sudo sed -i '' -e 's/--autologin \+pi/--autologin papercut/'  /etc/systemd/system/autologin_papercut@.service
+    [[ -e /etc/systemd/system/getty.target.wants/getty@tty1.service ]] &&
+      sudo rm /etc/systemd/system/getty.target.wants/getty@tty1.service
+    sudo ln -fs /etc/systemd/system/autologin_papercut@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+else
+    echo Upgrade to current version of Debian failed. Can\'t use systemd
+    exit -1
+fi
+
+# Remove old calls to release station
+sudo sed -i -e '/pc-release-linux.sh/d' ~papercut/.profile
+
+echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  ~papercut/.profile > /dev/null
+
+# Finshed set up for Papercut. Now going to add some network config goodness
+
+
+echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
+
+if [[ $(ask 'Do you wish to use an default hostname of a) '"$(hostname)"' or a b) CPU serial number based hostname?[A/b] ') =~ ^[Aa]$ ]]
+then
+  newhostname=$(hostname)
+else
+  newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)'
+fi
+
+sudo tee /boot/machine.local <<EOF  > /dev/null
+# Edit this file and reboot the Pi.
+# NB Insert the SD card into a workstation and you can edit the file as well
+
+newhostname=$newhostname  # Host for /etc/host
+#newhostname=<my alternative hostname>  # Or use a different hostname instead
+#
+# To enable a wifi network uncomment and set the following values as needed
+#
+#ssid=SSID
+#psk=PSK Passphrase
+#id_str=ID  # Optional -- will use SSID if not present
+#interface=wlan0 # Optional. Usually defaults to wlan0
+EOF
+
+cat <<'EOF' | sudo tee /usr/local/sbin/config-hostname > /dev/null
+#!/bin/sh
+
+if [ -f /boot/machine.local ] ; then
+. /boot/machine.local # dash does not support `source` keyword
+oldhostname=$(hostname)
+if [ -n "$newhostname" -a "$newhostname" != "$oldhostname" ] ; then
+  sudo hostname $newhostname
+  echo $newhostname | sudo tee /etc/hostname > /dev/null
+  sudo sed -i -re 's/^(..*)'$oldhostname'(.*)$/\1'$newhostname'\2/' /etc/hosts
+  sudo invoke-rc.d hostname.sh start
+  sudo invoke-rc.d networking force-reload
+  sudo invoke-rc.d avahi-daemon force-reload
+  sudo /etc/init.d/ssh restart
+  logger "Changed hostname to $(hostname) on $interface"
+  logger "About to reboot"
+  sudo init 6
+fi
+fi
+
+EOF
+
+sudo tee /usr/local/sbin/config-wifi <<'EOFx' > /dev/null
+#!/bin/sh
+if [ -f /boot/machine.local ] ; then
+. /boot/machine.local # dash does not support `source` keyword
+
+  [ -z "$ssid" ] && exit 0
+
+  [ -z "$id_str" ] && id_str=$ssid
+
+  network_id=$(wpa_cli list_networks | tail -n +3 | grep $ssid |cut -f 1)
+
+  if [ -z  $network_id ] ; then
+    maxNetworkId=$(wpa_cli list_networks | tail -n +3 | tail -n 1 | cut -f 1)]
+    if [ -z  $maxNetworkId ] ; then
+      network_id=0
+    else
+      network_id=$((maxNetworkID + 1 ))
+    fi
+  else
+    wpa_cli remove_network $network_id # Don't care if it fails
+  fi
+
+  if [ -n "$interface" ] && ! grep $interface /etc/network/interfaces ; then
+    sudo tee -a /etc/network/interfaces <<EOF
+allow-hotplug $interface
+iface $interface inet manual
+wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
+iface default inet dhcp
+EOF
+  fi
+
+ wpa_cli <<EOF
+add_network $network_id
+set_network $network_id ssid "$ssid"
+set_network $network_id id_str "$id_str"
+set_network $network_id psk "$psk"
+enable_network $network_id
+save_config
+quit
+EOF
+fi
+EOFx
+
+sudo chmod +x /usr/local/sbin/config-hostname
+sudo chmod +x /usr/local/sbin/config-wifi
+
+sudo sed -i -re '/config-(hostname|wifi)/d;/exit 0/i\
+[ -x /usr/local/sbin/config-hostname ] && /usr/local/sbin/config-hostname\
+[ -x /usr/local/sbin/config-wifi ] && /usr/local/sbin/config-wifi
+' /etc/rc.local
+
+
+if [[ "pi" -eq "$USER" ]] ; then
+    echo "The default account is still named \"$USER\". This should be changed for security reasons"
+    if [[ $(ask "Do you wish to rename the $USER user account?[y/N] ") =~ ^[Yy]$ ]] ; then
+
+        read -p  "Please enter the new user name " -r < /dev/tty
+
+        cat <<'EOF' | sudo bash -s $USER $REPLY $HOME
+            for i in /etc/group /etc/passwd /etc/sudoers /etc/shadow ; do
+                sed -rie '/\b'$1'\b/s/\b'$1'\b/'$2'/g' $i
+            done
+            mv $3 /home/$2
+EOF
+
+        USER=$REPLY
+
+        echo "User name changed to $USER"
+
+        echo please change the password as well
+        sudo passwd $USER   # Don't prompt the user for their own password
+    else
+      echo
+    fi
+fi
+
+echo 'Setup complete. Please change the  password for '"$USER"' if not already done'
+ask "Please press any key to reboot the PC and force a disk check"
+sudo touch /forcefsck && sudo init 6

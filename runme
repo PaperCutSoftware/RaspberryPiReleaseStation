@@ -27,14 +27,38 @@ ask() {
 usage() {
     #TODO Get short-url
     echo 'wget short-url -O - | bash  -i <server-ip> -n <server-name> [-f <installer-file>] [-u] [-s]'
-    echo -i PaperCut server IP addresss xxx.xxx.xxx.xxx
-    echo -n PaperCut server Network IP name e.g. papercut.example.com
-    echo -f is the name of the PaperCut installer file, If not present the script will attempt to download an installer
-    echo -u Only upgrade the software
-    echo -s Skip the check of free disk space. Useful with -u
-    echo -h Print this help text
+    echo '-i PaperCut server IP addresss xxx.xxx.xxx.xxx'
+    echo '-n PaperCut server Network IP name e.g. papercut.example.com'
+    echo '-f is the name of the PaperCut installer file, If not present the script will attempt to download an installer'
+    echo '-u Only upgrade the software'
+    echo '-s Skip the check of free disk space. Useful with -u'
+    echo '-h Print this help text'
     exit
 }
+
+do_wifi_country() { # Adapted from raspi-config
+  oIFS="$IFS"
+
+  IFS="/"
+  value=$(cat /usr/share/zoneinfo/iso3166.tab | tail -n +26 | tr '\t' '/' | tr '\n' '/')
+  COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
+  if [ $? -eq 0 ];then
+    if [ -e /etc/wpa_supplicant/wpa_supplicant.conf ]; then
+        if grep -q "^country=" /etc/wpa_supplicant/wpa_supplicant.conf ; then
+            sudo sed -i "s/^country=.*/country=$COUNTRY/g" /etc/wpa_supplicant/wpa_supplicant.conf
+        else
+            sudo sed -i "1i country=$COUNTRY" /etc/wpa_supplicant/wpa_supplicant.conf
+        fi
+    else
+        echo "country=$COUNTRY" | sudo tee  /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null
+    fi
+    whiptail --msgbox "Wi-fi country set to $COUNTRY" 20 60 1
+  else
+      echo Error selecting wifi country code
+  fi
+  IFS=$oIFS
+}
+
 
 while getopts :i:n:p:f:uh FLAG ; do
     case $FLAG in
@@ -112,7 +136,7 @@ echo
 
 sudo sed -i -e '/trap.*2/d' /etc/profile
 
-sudo sed -i -e '3i\
+sudo sed -i -e $'3i\
 trap \'\' 2
 
 ' /etc/profile
@@ -127,10 +151,11 @@ if [[ -z "$UPGRADE" ]] ; then
   sudo dpkg-reconfigure keyboard-configuration
   sudo dpkg-reconfigure locales
   sudo dpkg-reconfigure tzdata
-
+  do_wifi_country
 
   PP_PW=$(pwgen 18 1)
 
+  sudo killall -u papercut
   sudo userdel -fr papercut
 
   (echo $PP_PW; echo $PP_PW ) | sudo adduser papercut --gecos "PaperCut Admin User" --home /usr/local/papercut
@@ -148,7 +173,7 @@ if [[ -z "$INSTALLER_FILE" ]] ; then
 fi
 
 if [[ ! -e "$INSTALLER_FILE" ]] ; then
-    echo Can\'t find installer file $INSTALLER_FILE
+    echo "Can\'t find installer file $INSTALLER_FILE"
     exit
 fi
 
@@ -189,11 +214,11 @@ fi
 for i in connection.properties config.properties ; do
   [[ -e ~papercut/release/$i  ]] && sudo rm ~papercut/release/$i
   sudo ln -s /boot/pc-$i ~papercut/release/$i
-  sudo chown papercut:papercut  ~papercut/releae/$i
+  sudo chown papercut:papercut  ~papercut/release/$i
 done
 
 # Make Pi boot into user papercut text mode
-if  command -v systemctl > /dev/null && systemctl | grep -q '^\-\.mount' ; then
+if  command -v systemctl > /dev/null && systemctl | grep -q '^ *\-\.mount' ; then
     sudo systemctl set-default multi-user.target
     sudo cp  /etc/systemd/system/autologin@.service  /etc/systemd/system/autologin_papercut@.service
     sudo sed -i '' -e 's/--autologin \+pi/--autologin papercut/'  /etc/systemd/system/autologin_papercut@.service
@@ -205,22 +230,76 @@ else
     exit -1
 fi
 
+
 # Remove old calls to release station
 sudo sed -i -e '/pc-release-linux.sh/d' ~papercut/.profile
 
+# Force locale etc setting on 1st boot
+sudo touch /boot/prompt4Locale
+
+if ! grep "prompt4Locale" ~papercut/.profile ; then
+
+cat <<EOF | sudo tee -a ~papercut/.profile
+
+if [[ -e /boot/prompt4Locale ]] ; then
+    echo
+    echo "WARNING:"
+    echo "Please set up:"
+    echo "locale,"
+    echo "      keyboard,"
+    echo "      timezone and"
+    echo "      WiFi region"
+    echo
+    echo "You will need the login credentials for the local admin account"
+    echo "and connect via ssh to \"\$(hostname)\". You can then run the command"
+    echo "\"sudo raspi-config\" and select the \"Internationalisation Options\" menu."
+    echo "After completing the configuration process please delete the file"
+    echo "/boot/prompt4Locale"
+    read -p "Press any key to continue" -n 1 < /dev/tty
+fi
+
+EOF
+
+fi
+
 echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  ~papercut/.profile > /dev/null
 
-# Finshed set up for Papercut. Now going to add some network config goodness
+# Finshed set up for Papercut. Now going to add some system mnagement goodness
 
+# Make the pi run file system check/repair on every boot (need to clear out old settings 1st)
+sudo sed -i -e 's/ fsck\.\(repair\|mode\)=[^ ]*//;
+                s/$/ fsck.mode=force fsck.repair=yes/' /boot/cmdline.txt
+
+#Disable VT switching
+cat <<EOF | sudo tee /usr/share/X11/xorg.conf.d/20-disable-vt-switching.conf > /dev/null
+Section "ServerFlags"
+    Option "DontVTSwitch" "true"
+EndSection
+EOF
 
 echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
 
-if [[ $(ask 'Do you wish to use an default hostname of a) '"$(hostname)"' or a b) CPU serial number based hostname?[A/b] ') =~ ^[Aa]$ ]]
-then
-  newhostname=$(hostname)
-else
-  newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)'
-fi
+echo
+echo Host name management
+echo ====================
+echo
+echo There are three options:
+echo "Keep the current hostname $(hostname)"
+echo "Change to a fixed hostname of your choosing"
+echo "Have the Pi dynamically allocate a a hostname based on the CPU serial number at boot time"
+echo
+echo
+
+select selection in "Keep the current hostname" \
+                    "Provide a new hostname" \
+                    "CPU serial number based hostname" ; do
+    case "$REPLY" in
+        1) newhostname=$(hostname) ; break ;;
+        2) newhostname=$(ask "Please provide new hostname ") ; break ;;
+        3) newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)' ; break;;
+        *) echo "Please select from List" ;;
+    esac
+done
 
 sudo tee /boot/machine.local <<EOF  > /dev/null
 # Edit this file and reboot the Pi.
@@ -228,6 +307,7 @@ sudo tee /boot/machine.local <<EOF  > /dev/null
 
 newhostname=$newhostname  # Host for /etc/host
 #newhostname=<my alternative hostname>  # Or use a different hostname instead
+#newhostname=rpi$'$(sed -nre '/^Serial\t\t: ........(........)$/s//\\1/p' /proc/cpuinfo)'  # Or CPU serial number hostname instead
 #
 # To enable a wifi network uncomment and set the following values as needed
 #
@@ -310,8 +390,8 @@ sudo sed -i -re '/config-(hostname|wifi)/d;/exit 0/i\
 [ -x /usr/local/sbin/config-wifi ] && /usr/local/sbin/config-wifi
 ' /etc/rc.local
 
-
-if [[ "pi" -eq "$USER" -eq "pi" ]] ; then
+# shellcheck disable=2154
+if [[ "pi" -eq "$USER" ]] ; then
     echo "The default account is still named \"$USER\". This should be changed for security reasons"
     if [[ $(ask "Do you wish to rename the $USER user account?[y/N] ") =~ ^[Yy]$ ]] ; then
 
@@ -336,5 +416,5 @@ EOF
 fi
 
 echo 'Setup complete. Please change the  password for '"$USER"' if not already done'
-ask "Please press any key to reboot the PC and force a disk check"
-sudo touch /forcefsck && sudo init 6
+ask "Please press any key to reboot the Raspberry Pi"
+sudo init 6

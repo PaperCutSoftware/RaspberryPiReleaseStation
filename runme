@@ -19,6 +19,9 @@ SERVER_IP="Edit Me"   # Prompt System Admin after install
 SERVER_NAME="Edit Me" # Prompt System Admin after install
 DOWNLOAD_URL=http://cdn.papercut.com/files/pcng/current/pcng-setup-linux-x64.sh
 
+PP_USER="papercut"  # User account to own and run papecut
+
+
 ask() {
     read -p "$1" -r < /dev/tty
     echo $REPLY
@@ -36,7 +39,7 @@ usage() {
     exit
 }
 
-do_wifi_country() { # Adapted from raspi-config
+do_wifi_country() { # Adapted from raspi-config script
   oIFS="$IFS"
 
   IFS="/"
@@ -44,10 +47,10 @@ do_wifi_country() { # Adapted from raspi-config
   COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
   if [ $? -eq 0 ];then
     if [ -e /etc/wpa_supplicant/wpa_supplicant.conf ]; then
-        if grep -q "^country=" /etc/wpa_supplicant/wpa_supplicant.conf ; then
-            sudo sed -i "s/^country=.*/country=$COUNTRY/g" /etc/wpa_supplicant/wpa_supplicant.conf
+        if sudo grep -q "^country=" /etc/wpa_supplicant/wpa_supplicant.conf ; then
+            sudo sed -i -e "s/^country=.*/country=$COUNTRY/g" /etc/wpa_supplicant/wpa_supplicant.conf
         else
-            sudo sed -i "1i country=$COUNTRY" /etc/wpa_supplicant/wpa_supplicant.conf
+            sudo sed -i -e "1i country=$COUNTRY" /etc/wpa_supplicant/wpa_supplicant.conf
         fi
     else
         echo "country=$COUNTRY" | sudo tee  /etc/wpa_supplicant/wpa_supplicant.conf > /dev/null
@@ -59,7 +62,7 @@ do_wifi_country() { # Adapted from raspi-config
   IFS=$oIFS
 }
 
-
+# Main
 while getopts :i:n:p:f:uh FLAG ; do
     case $FLAG in
 
@@ -91,8 +94,16 @@ done
 
 # START HERE
 
-if [[ ! -d ~papercut && -n "$UPGRADE" ]] ; then
-  echo User papercut does not exist. Upgrade option is being ignored
+if [[ !  -e /etc/issue ]] ||  ! grep "Raspbian" /etc/issue  ; then
+    echo Please run this script on Raspian Linux.
+    echo You can download this from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
+    echo 'The Lite version is recommended to save space, but the full version will also work'
+    exit
+fi
+
+
+if [[ ! -d "$(eval echo ~$PP_USER)" && -n "$UPGRADE" ]] ; then
+  echo User $PP_USER does not exist. Upgrade option is being ignored
   UPGRADE=""
   if [[ -z "$FREESPACEWANTED" ]] ; then
     FREESPACEWANTED=$_FREESPACEWANTED
@@ -117,12 +128,6 @@ if [[ -n "$FREESPACEWANTED" && $(df -m --output=avail / | tail -1) -lt $FREESPAC
   exit -1
 fi
 
-if [[ ! -f /etc/issue ]] ; then
-    echo Please run this script on Raspian Linux.
-    echo You can download this from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
-    echo 'The Lite version is recommended to save space, but the full version will also work'
-    exit
-fi
 
 echo About to upgrade Raspian to the latest version -- this may take some time
 
@@ -134,12 +139,14 @@ sudo apt-get autoremove
 sudo apt-get autoclean
 echo
 
-sudo sed -i -e '/trap.*2/d' /etc/profile
+sudo sed -i -e '/\(trap.*2\)\|\(set.*\+m\)/d' /etc/profile
 
 sudo sed -i -e $'3i\
-trap \'\' 2
+trap \'\' 2 # Disable ctrl-c control\
+set +m      # Disable job control\
 
 ' /etc/profile
+
 
 if [[ -z "$UPGRADE" ]] ; then
 
@@ -153,18 +160,23 @@ if [[ -z "$UPGRADE" ]] ; then
   sudo dpkg-reconfigure tzdata
   do_wifi_country
 
-  PP_PW=$(pwgen 18 1)
+  PP_PW=$(pwgen 18 1)  # Give the new user a secure password that we won't know
 
-  sudo killall -u papercut
-  sudo userdel -fr papercut
+  if [[ -d "$(eval echo ~$PP_USER)" ]] ; then
+      # User already exists
+      sudo killall -u $PP_USER
+      sudo userdel -fr $PP_USER
+  fi
 
-  (echo $PP_PW; echo $PP_PW ) | sudo adduser papercut --gecos "PaperCut Admin User" --home /usr/local/papercut
+  PP_HOME=/usr/local/$PP_USER # Papercut software is installed in home dir of PaperCut user
+  (echo $PP_PW; echo $PP_PW ) | sudo adduser $PP_USER --gecos "PaperCut Admin User" --home $PP_HOME
 
   echo
-  echo PaperCut admin user created with secure password. For security resons you cannot log in as papercut
+  echo PaperCut application user created with secure password. For security resons you cannot log in as papercut
   echo
 else
-  sudo rm -rf ~papercut/release
+  PP_HOME="$(eval echo $PP_HOME)"
+  sudo rm -rf ~$PP_HOME/release
 fi
 
 if [[ -z "$INSTALLER_FILE" ]] ; then
@@ -179,24 +191,24 @@ fi
 
 chmod aog+x "$INSTALLER_FILE"
 
-sudo -u papercut "$INSTALLER_FILE" -e -- -C ~papercut/.. --checkpoint=.1000 --exclude papercut/release/runtime papercut/release
+sudo -u $PP_USER "$INSTALLER_FILE" -e -- -C "$PP_HOME/.." --checkpoint=.1000 --exclude papercut/release/runtime papercut/release
 
-if [[ ! -d ~papercut/release ]] ; then
+if [[ ! -d "$PP_HOME/release" ]] ; then
   echo Failed to unpack the installer. Please download again
   exit -1
 fi
 
-find ~papercut -name \*.jar.pack -exec sh -c 'echo Unpacking $1 && sudo -u papercut unpack200 $1 ${1%%.pack}' sh {} \;
+find $PP_HOME -name \*.jar.pack -exec sh -c "echo Unpacking \$1 && sudo -u $PP_USER unpack200 \$1 \${1%%.pack}" sh {} \;
 
-sudo -u papercut chmod ugo+x ~papercut/release/*.sh
+sudo -u $PP_USER chmod ugo+x $PP_HOME/release/*.sh
 
-[[ -e  ~papercut/release-station.log ]] &&
-    sudo rm ~papercut/release-station.log
+[[ -e  $PP_HOME/release-station.log ]] &&
+    sudo rm $PP_HOME/release-station.log
 
 sudo touch  /var/log/release-station.log
-sudo ln -s /var/log/release-station.log ~papercut/release-station.log
-sudo chown papercut:papercut /var/log/release-station.log
-sudo chown papercut:papercut ~papercut/release-station.log
+sudo ln -s /var/log/release-station.log $PP_HOME/release-station.log
+sudo chown $PP_USER:$PP_USER /var/log/release-station.log
+sudo chown $PP_USER:$PP_USER $PP_HOME/release-station.log
 
 if [[ -z "$UPGRADE" ]] ; then
 
@@ -206,25 +218,25 @@ server-port=$SERVER_PORT
 server-name=$SERVER_NAME
 EOF
 
-  sudo mv ~papercut/release/config.properties  /boot/pc-config.properties
-  # sudo mv ~papercut/release/client-machine-aliases.properties /boot/client-machine-aliases.properties
+  sudo mv $PP_HOME/release/config.properties  /boot/pc-config.properties
+  # sudo mv $PP_HOME/release/client-machine-aliases.properties /boot/client-machine-aliases.properties
 fi
 
 
 for i in connection.properties config.properties ; do
-  [[ -e ~papercut/release/$i  ]] && sudo rm ~papercut/release/$i
-  sudo ln -s /boot/pc-$i ~papercut/release/$i
-  sudo chown papercut:papercut  ~papercut/release/$i
+  [[ -e $PP_HOME/release/$i  ]] && sudo rm $PP_HOME/release/$i
+  sudo ln -s /boot/pc-$i $PP_HOME/release/$i
+  sudo chown $PP_USER:$PP_USER  $PP_HOME/release/$i
 done
 
 # Make Pi boot into user papercut text mode
 if  command -v systemctl > /dev/null && systemctl | grep -q '^ *\-\.mount' ; then
     sudo systemctl set-default multi-user.target
-    sudo cp  /etc/systemd/system/autologin@.service  /etc/systemd/system/autologin_papercut@.service
-    sudo sed -i '' -e 's/--autologin \+pi/--autologin papercut/'  /etc/systemd/system/autologin_papercut@.service
+    sudo cp  /etc/systemd/system/autologin@.service  /etc/systemd/system/autologin_$PP_USER@.service
+    sudo sed -i -e "s/--autologin \+pi/--autologin $PP_USER/"  /etc/systemd/system/autologin_$PP_USER@.service
     [[ -e /etc/systemd/system/getty.target.wants/getty@tty1.service ]] &&
       sudo rm /etc/systemd/system/getty.target.wants/getty@tty1.service
-    sudo ln -fs /etc/systemd/system/autologin_papercut@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+    sudo ln -fs /etc/systemd/system/autologin_$PP_USER@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
 else
     echo Upgrade to current version of Debian failed. Can\'t use systemd
     exit -1
@@ -232,14 +244,14 @@ fi
 
 
 # Remove old calls to release station
-sudo sed -i -e '/pc-release-linux.sh/d' ~papercut/.profile
+sudo sed -i -e '/pc-release-linux.sh/d' $PP_HOME/.profile
 
 # Force locale etc setting on 1st boot
 sudo touch /boot/prompt4Locale
 
-if ! grep "prompt4Locale" ~papercut/.profile ; then
+if ! grep "prompt4Locale" $PP_HOME/.profile ; then
 
-cat <<EOF | sudo tee -a ~papercut/.profile
+cat <<EOF | sudo tee -a $PP_HOME/.profile
 
 if [[ -e /boot/prompt4Locale ]] ; then
     echo
@@ -262,13 +274,12 @@ EOF
 
 fi
 
-echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  ~papercut/.profile > /dev/null
+echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  "$PP_HOME/.profile" > /dev/null
 
 # Finshed set up for Papercut. Now going to add some system mnagement goodness
 
 # Make the pi run file system check/repair on every boot (need to clear out old settings 1st)
-sudo sed -i -e 's/ fsck\.\(repair\|mode\)=[^ ]*//;
-                s/$/ fsck.mode=force fsck.repair=yes/' /boot/cmdline.txt
+sudo sed -i -e 's/ fsck\.\(repair\|mode\)=[^ ]*//g;s/$/ fsck.mode=force fsck.repair=yes/' /boot/cmdline.txt
 
 #Disable VT switching
 cat <<EOF | sudo tee /usr/share/X11/xorg.conf.d/20-disable-vt-switching.conf > /dev/null
@@ -284,30 +295,32 @@ echo Host name management
 echo ====================
 echo
 echo There are three options:
-echo "Keep the current hostname $(hostname)"
+echo "Keep the current hostname \"$(hostname)\""
 echo "Change to a fixed hostname of your choosing"
 echo "Have the Pi dynamically allocate a a hostname based on the CPU serial number at boot time"
 echo
 echo
 
-select selection in "Keep the current hostname" \
+dynhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)'
+
+select selection in "Keep the current hostname \"$(hostname)\"" \
                     "Provide a new hostname" \
                     "CPU serial number based hostname" ; do
     case "$REPLY" in
         1) newhostname=$(hostname) ; break ;;
         2) newhostname=$(ask "Please provide new hostname ") ; break ;;
         3) newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)' ; break;;
-        *) echo "Please select from List" ;;
+        *) echo "$selection is invalid. Please select from list" ;;
     esac
 done
 
-sudo tee /boot/machine.local <<EOF  > /dev/null
+sudo tee /boot/machine.local <<EOF
 # Edit this file and reboot the Pi.
 # NB Insert the SD card into a workstation and you can edit the file as well
 
 newhostname=$newhostname  # Host for /etc/host
-#newhostname=<my alternative hostname>  # Or use a different hostname instead
-#newhostname=rpi$'$(sed -nre '/^Serial\t\t: ........(........)$/s//\\1/p' /proc/cpuinfo)'  # Or CPU serial number hostname instead
+#newhostname=<fixed hostname>  # Or use a different hostname instead
+#newhostname=$dynhostname
 #
 # To enable a wifi network uncomment and set the following values as needed
 #
@@ -399,7 +412,7 @@ if [[ "pi" -eq "$USER" ]] ; then
 
         cat <<'EOF' | sudo bash -s $USER $REPLY $HOME
             for i in /etc/group /etc/passwd /etc/sudoers /etc/shadow ; do
-                sed -rie '/\b'$1'\b/s/\b'$1'\b/'$2'/g' $i
+                sed -ri -e '/\b'$1'\b/s/\b'$1'\b/'$2'/g' $i
             done
             mv $3 /home/$2
 EOF

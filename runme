@@ -5,8 +5,8 @@
 # License Version 3.
 
 # Some information and techniques take from
-#   :https://github.com/RPi-Distro/raspi-config
-#   :https://github.com/alecthegeek/CCHS_Raspian_for_IoT/
+#   https://github.com/RPi-Distro/raspi-config
+#   https://github.com/alecthegeek/CCHS_Raspian_for_IoT/
 
 # This script may be run as often as needed.
 
@@ -281,12 +281,21 @@ echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  "$PP_HOME/.profile
 # Make the pi run file system check/repair on every boot (need to clear out old settings 1st)
 sudo sed -i -e 's/ fsck\.\(repair\|mode\)=[^ ]*//g;s/$/ fsck.mode=force fsck.repair=yes/' /boot/cmdline.txt
 
+
+if [[ $(ask "Do you wish to flip the display 180˚, useful for displays that require specific orientation because of cables etc.?")  =~ [Yy] ]] ; then
+  sudo sed -i -e '/lcd_rotate=/d;$a\
+    # Added by PaperCut
+    lcd_rotate=2' /boot/config.txt
+fi
+
+
 #Disable VT switching
 cat <<EOF | sudo tee /usr/share/X11/xorg.conf.d/20-disable-vt-switching.conf > /dev/null
 Section "ServerFlags"
     Option "DontVTSwitch" "true"
 EndSection
 EOF
+
 
 echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
 
@@ -408,13 +417,22 @@ if [[ "pi" -eq "$USER" ]] ; then
     echo "The default account is still named \"$USER\". This should be changed for security reasons"
     if [[ $(ask "Do you wish to rename the $USER user account?[y/N] ") =~ ^[Yy]$ ]] ; then
 
-        read -p  "Please enter the new user name " -r < /dev/tty
+        read -rp "Please enter the new user name " < /dev/tty
 
+        # Make all these changes under a single sudo session -- must be all done at once
         cat <<'EOF' | sudo bash -s $USER $REPLY $HOME
             for i in /etc/group /etc/passwd /etc/sudoers /etc/shadow ; do
                 sed -ri -e '/\b'$1'\b/s/\b'$1'\b/'$2'/g' $i
             done
-            mv $3 /home/$2
+
+          if [[ -f /etc/sudoers.d/010_${1}-nopasswd ]] ; then
+            # Password setting introduced in 20161018+1
+            mv /etc/sudoers.d/010_${1}-nopasswd /etc/sudoers.d/010_${2}-nopasswd
+            sed -ri -e '/\b'$1'\b/s/\b'$1'\b/'$2'/g' /etc/sudoers.d/010_$2-nopasswd
+          fi
+
+          # Rename home directory
+          mv $3 /home/$2
 EOF
 
         USER=$REPLY
@@ -422,7 +440,7 @@ EOF
         echo "User name changed to $USER"
 
         echo please change the password as well
-        sudo passwd $USER   # Don't prompt the user for their own password
+        sudo passwd "$USER"   # Don't prompt the user for their own password by using sudo
     else
       echo
     fi

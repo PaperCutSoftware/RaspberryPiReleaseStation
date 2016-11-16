@@ -2,7 +2,7 @@
 
 This script (`runme`) will install and setup a PapeCut release station onto a copy of Raspian GNU/Linux.
 
-Use of this script is optional. Papercut Provide a pre-created image for download form their website created using this script.
+Use of this script is optional. Papercut Provide a pre-created image for download from their website (created using this script).
 
 http://www.papercut.com/tour/raspberry-pi/
 
@@ -13,8 +13,8 @@ It will also work with the large Raspian download.
 
 Once you have copied the Raspian image to your SD card
 you might want to prevent the Raspberry Pi from autosizing the disk image to fit the whole SD card.
-You can do this by mounting the SD card in your laptop of desktop workstation and edting the file `cmdline.txt`.
-Remove the text #TODO
+You can do this by mounting the SD card in your laptop of desktop workstation and editing the file `cmdline.txt`.
+Remove the text `init=/usr/lib/raspi-config/init_resize.sh`
 
 Insert the SD card into the Raspberry Pi and boot.
 

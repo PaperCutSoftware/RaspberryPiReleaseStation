@@ -4,7 +4,7 @@
 # Copyright PaperCut software 2016 under the terms of the GNU Open Source
 # License Version 3.
 
-# Some information and techniques take from
+# Some information and techniques taken from
 #   https://github.com/RPi-Distro/raspi-config
 #   https://github.com/alecthegeek/CCHS_Raspian_for_IoT/
 
@@ -28,8 +28,7 @@ ask() {
 }
 
 usage() {
-    #TODO Get short-url
-    echo 'wget short-url -O - | bash  -i <server-ip> -n <server-name> [-f <installer-file>] [-u] [-s]'
+    echo $0 -i <server-ip> -n <server-name> [-f <installer-file>] [-u]
     echo '-i PaperCut server IP addresss xxx.xxx.xxx.xxx'
     echo '-n PaperCut server Network IP name e.g. papercut.example.com'
     echo '-f is the name of the PaperCut installer file, If not present the script will attempt to download an installer'
@@ -95,8 +94,8 @@ done
 # START HERE
 
 if [[ !  -e /etc/issue ]] ||  ! grep "Raspbian" /etc/issue  ; then
-    echo Please run this script on Raspian Linux.
-    echo You can download this from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
+    echo Please run this script on Raspian GNU/Linux.
+    echo You can download Linux from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
     echo 'The Lite version is recommended to save space, but the full version will also work'
     exit
 fi
@@ -107,12 +106,12 @@ if [[ ! -d "$(eval echo ~$PP_USER)" && -n "$UPGRADE" ]] ; then
   UPGRADE=""
   if [[ -z "$FREESPACEWANTED" ]] ; then
     FREESPACEWANTED=$_FREESPACEWANTED
-    echo also checking for $FREESPACEWANTED free disk space has been re-enabled.
+    echo also checking for $FREESPACEWANTED free disk space.
   fi
 fi
 
 if [[ -n "$FREESPACEWANTED" && $(df -m --output=avail / | tail -1) -lt $FREESPACEWANTED ]] ; then
-  echo Insufficuent disk space -- Please there is at least $FREESPACEWANTED Mb and run run again
+  echo Insufficuent disk space -- Please make sure there is at least $FREESPACEWANTED Mb and run run again
   if [[ $(df -m --output=size / | tail -1) -lt 2800 ]] ; then
     echo N.B. If you have NOT already autosized your image to fit all the space on the SD card
     echo 'I can resize the image for you to 3G which will be enough if you are using Jessie "lite"'

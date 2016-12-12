@@ -445,6 +445,10 @@ EOF
     fi
 fi
 
+
+# Enable ssh server (Requried for Raspian after November 2016)								      
+sudo touch /boot/ssh									      
+
 echo 'Setup complete. Please change the  password for '"$USER"' if not already done'
 ask "Please press any key to reboot the Raspberry Pi"
 sudo init 6

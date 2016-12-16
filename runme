@@ -93,7 +93,7 @@ done
 
 # START HERE
 
-if [[ !  -e /etc/issue ]] ||  ! grep "Raspbian" /etc/issue  ; then
+if [[ !  -e /etc/issue ]] ||  ! grep "Raspbian" /etc/issue > /dev/null  ; then
     echo Please run this script on Raspian GNU/Linux.
     echo You can download Linux from the Raspberry Pi website at https://www.raspberrypi.org/downloads/raspbian/
     echo 'The Lite version is recommended to save space, but the full version will also work'
@@ -168,7 +168,8 @@ if [[ -z "$UPGRADE" ]] ; then
   fi
 
   PP_HOME=/usr/local/$PP_USER # Papercut software is installed in home dir of PaperCut user
-  (echo $PP_PW; echo $PP_PW ) | sudo adduser $PP_USER --gecos "PaperCut Admin User" --home $PP_HOME
+  (echo $PP_PW; echo $PP_PW ) | sudo adduser --gecos "PaperCut Admin User" --home $PP_HOME $PP_USER
+  sudo usermod -aG video $PP_USER
 
   echo
   echo PaperCut application user created with secure password. For security resons you cannot log in as papercut
@@ -273,7 +274,7 @@ EOF
 
 fi
 
-echo 'xinit ~/release/pc-release-linux.sh ;exit'|sudo tee -a  "$PP_HOME/.profile" > /dev/null
+echo 'xinit ~/release/pc-release-linux.sh -- vt$XDG_VTNR ;exit'|sudo tee -a  "$PP_HOME/.profile" > /dev/null
 
 # Finshed set up for Papercut. Now going to add some system mnagement goodness
 

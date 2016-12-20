@@ -175,7 +175,7 @@ if [[ -z "$UPGRADE" ]] ; then
   echo PaperCut application user created with secure password. For security resons you cannot log in as papercut
   echo
 else
-  PP_HOME="$(eval echo $PP_HOME)"
+  PP_HOME="$(eval echo ~$PP_USER)"
   sudo rm -rf ~$PP_HOME/release
 fi
 

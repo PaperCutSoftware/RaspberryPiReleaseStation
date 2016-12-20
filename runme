@@ -159,7 +159,7 @@ if [[ -z "$UPGRADE" ]] ; then
   sudo dpkg-reconfigure tzdata
   do_wifi_country
 
-  PP_PW=$(pwgen 18 1)  # Give the new user a secure password that we won't know
+  PP_PW=$(pwgen -s 18 1)  # Give the new user a secure password that we won't know
 
   if [[ -d "$(eval echo ~$PP_USER)" ]] ; then
       # User already exists

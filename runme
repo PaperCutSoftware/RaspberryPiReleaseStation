@@ -21,7 +21,6 @@ DOWNLOAD_URL=http://cdn.papercut.com/files/pcng/current/pcng-setup-linux-x64.sh
 
 PP_USER="papercut"  # User account to own and run papecut
 
-
 ask() {
     read -p "$1" -r < /dev/tty
     echo $REPLY
@@ -127,8 +126,22 @@ if [[ -n "$FREESPACEWANTED" && $(df -m --output=avail / | tail -1) -lt $FREESPAC
   exit -1
 fi
 
+if [[ -z "$INSTALLER_FILE" ]] ; then
+  echo About to download the latest PaperCut installer file. This will take some time
+  echo
+  INSTALLER_FILE=/tmp/${DOWNLOAD_URL##*/}
+  wget $DOWNLOAD_URL  -O $INSTALLER_FILE  --progress=dot:giga
+fi
+
+if [[ ! -e "$INSTALLER_FILE" ]] ; then
+  echo "Can\'t find installer file $INSTALLER_FILE"
+  exit
+fi
+
+chmod aog+x "$INSTALLER_FILE"
 
 echo About to upgrade Raspian to the latest version -- this may take some time
+echo
 
 sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
 
@@ -152,6 +165,7 @@ if [[ -z "$UPGRADE" ]] ; then
   echo About to run various setup  programs. Please configure your locale, keyboard and timezone.
   echo 'NB You will need a physical keyboard attached to the Pi (even if using a remote ssh connection)'
   ask "Press any key to continue"
+  echo
 
 
   sudo dpkg-reconfigure keyboard-configuration
@@ -175,22 +189,13 @@ if [[ -z "$UPGRADE" ]] ; then
   echo PaperCut application user created with secure password. For security resons you cannot log in as papercut
   echo
 else
+  sudo killall -u $PP_USER
   PP_HOME="$(eval echo ~$PP_USER)"
-  sudo rm -rf ~$PP_HOME/release
+  sudo rm -rf "$PP_HOME"/release
 fi
 
-if [[ -z "$INSTALLER_FILE" ]] ; then
-    INSTALLER_FILE=/tmp/${DOWNLOAD_URL##*/}
-    wget $DOWNLOAD_URL  -O $INSTALLER_FILE
-fi
-
-if [[ ! -e "$INSTALLER_FILE" ]] ; then
-    echo "Can\'t find installer file $INSTALLER_FILE"
-    exit
-fi
-
-chmod aog+x "$INSTALLER_FILE"
-
+echo About to unpack the PaperCut installer. This may take some time
+echo
 sudo -u $PP_USER "$INSTALLER_FILE" -e -- -C "$PP_HOME/.." --checkpoint=.1000 --exclude papercut/release/runtime papercut/release
 
 if [[ ! -d "$PP_HOME/release" ]] ; then

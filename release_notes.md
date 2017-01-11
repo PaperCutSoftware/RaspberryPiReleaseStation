@@ -1,3 +1,11 @@
+# Release 16.4 (11/Jan/2017)
+
+1. Add support for new versions of Raspbian
+2. Fix bugs in upgrade process
+3. Improve structure of script -- download the installer much earlier
+4. Updated for build version 39038
+
+
 # Release 16.3 (16/Nov/2016)
 
 This version introduces a number of new security features compared to previous

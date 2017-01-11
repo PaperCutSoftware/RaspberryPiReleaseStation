@@ -32,7 +32,17 @@ After the SD card image has been created it can be backed up and duplicated.
 
 This script attempts to restrict users from running anything other than the Papercut release station software. To that end:
 
-1. Ctrl-c and job control are disabled when the user logs in
-2. The user is automatically assigned a secure, unknown password
+1. Virtual-Console switching, Ctrl-c and job control are disabled when the user logs in
+2. The papercut user is automatically assigned a secure, unknown password
 
-In order to configure and maintain the release station you will need to ssh to the Pi.
+In order to configure and maintain the release station you will need to ssh to the Pi. The admin account is `pcadmin` and the password is `password`. The password should be changed, and ideally all ssh access should be based on ssh keys only.
+
+The default regional configuration (keyboard layout, locale, wifi region and timezone) is configured for the US west coast. You you run the following commands to change this
+
+```shell
+sudo dpkg-reconfigure keyboard-configuration
+sudo dpkg-reconfigure locales
+sudo dpkg-reconfigure tzdata
+```
+
+Note: To modify the wifi config edit the file `/etc/wpa_supplicant/wpa_supplicant.conf`

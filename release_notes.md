@@ -1,3 +1,12 @@
+# Release 16.4 (21/Feb/2017)
+
+1. Based on Jan/2017 release of Raspian
+2. Fixed problem with help text
+3. Fixed problem with boot time wifi setup
+4. Added X updates -- should fix problems some people were reporting
+5. Upgraded to latest version of PaperCut 16.4 (Build 39159). May not work with previous versions of PaperCut.
+
+
 # Release 16.4 (11/Jan/2017)
 
 1. Add support for new versions of Raspbian

@@ -23,11 +23,11 @@ PP_USER="papercut"  # User account to own and run papecut
 
 ask() {
     read -p "$1" -r < /dev/tty
-    echo $REPLY
+    echo "$REPLY"
 }
 
 usage() {
-    echo $0 -i <server-ip> -n <server-name> [-f <installer-file>] [-u]
+    echo "$0" '-i <server-ip> -n <server-name> [-f <installer-file>] [-u]'
     echo '-i PaperCut server IP addresss xxx.xxx.xxx.xxx'
     echo '-n PaperCut server Network IP name e.g. papercut.example.com'
     echo '-f is the name of the PaperCut installer file, If not present the script will attempt to download an installer'
@@ -41,8 +41,8 @@ do_wifi_country() { # Adapted from raspi-config script
   oIFS="$IFS"
 
   IFS="/"
-  value=$(cat /usr/share/zoneinfo/iso3166.tab | tail -n +26 | tr '\t' '/' | tr '\n' '/')
-  COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
+  value=$(tail -n +26 /usr/share/zoneinfo/iso3166.tab | tr '\t' '/' | tr '\n' '/')
+  COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 "$value" 3>&1 1>&2 2>&3)
   if [ $? -eq 0 ];then
     if [ -e /etc/wpa_supplicant/wpa_supplicant.conf ]; then
         if sudo grep -q "^country=" /etc/wpa_supplicant/wpa_supplicant.conf ; then
@@ -368,28 +368,38 @@ EOF
 
 sudo tee /usr/local/sbin/config-wifi <<'EOFx' > /dev/null
 #!/bin/sh
-if [ -f /boot/machine.local ] ; then
+
+# Can we even manage the wifi?
+if !  wpa_cli status 2> /dev/null ; then
+  echo "Cannot configure wifi -- no wifi hardware?"
+  exit 0
+fi
+
+# Do we have a file with setings?
+[ -f /boot/machine.local ] || (echo "No /boot/machine.local settings file found" &&  exit 0)
+
 . /boot/machine.local # dash does not support `source` keyword
 
-  [ -z "$ssid" ] && exit 0
+# Do we at least have some wifi settings
+[ -z "$ssid" ] && exit 0
 
-  [ -z "$id_str" ] && id_str=$ssid
+[ -z "$id_str" ] && id_str=$ssid
 
-  network_id=$(wpa_cli list_networks | tail -n +3 | grep $ssid |cut -f 1)
+network_id=$(wpa_cli list_networks 2> /dev/null| tail -n +3 | grep "$ssid" |cut -f 1)
 
-  if [ -z  $network_id ] ; then
-    maxNetworkId=$(wpa_cli list_networks | tail -n +3 | tail -n 1 | cut -f 1)]
-    if [ -z  $maxNetworkId ] ; then
-      network_id=0
-    else
-      network_id=$((maxNetworkID + 1 ))
-    fi
+if [ -z  "$network_id" ] ; then
+  maxNetworkId=$(wpa_cli list_networks 2> /dev/null | tail -n +3 | tail -n 1 | cut -f 1)]
+  if [ -z  $maxNetworkId ] ; then
+    network_id=0
   else
-    wpa_cli remove_network $network_id # Don't care if it fails
+    network_id=$(($maxNetworkID + 1 ))
   fi
+else
+  wpa_cli remove_network "$network_id" # Don't care if it fails
+fi
 
-  if [ -n "$interface" ] && ! grep $interface /etc/network/interfaces ; then
-    sudo tee -a /etc/network/interfaces <<EOF
+if [ -n "$interface" ] && ! grep $interface /etc/network/interfaces ; then
+  sudo tee -a /etc/network/interfaces <<EOF
 allow-hotplug $interface
 iface $interface inet manual
 wpa-roam /etc/wpa_supplicant/wpa_supplicant.conf
@@ -397,16 +407,15 @@ iface default inet dhcp
 EOF
   fi
 
- wpa_cli <<EOF
+wpa_cli <<EOF
 add_network $network_id
 set_network $network_id ssid "$ssid"
-set_network $network_id id_str "$id_str"
 set_network $network_id psk "$psk"
+set_network $network_id id_str "$id_str"
 enable_network $network_id
 save_config
 quit
 EOF
-fi
 EOFx
 
 sudo chmod +x /usr/local/sbin/config-hostname

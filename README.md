@@ -40,9 +40,7 @@ In order to configure and maintain the release station you will need to ssh to t
 The default regional configuration (keyboard layout, locale, wifi region and timezone) is configured for the US west coast. You you run the following commands to change this
 
 ```shell
-sudo dpkg-reconfigure keyboard-configuration
-sudo dpkg-reconfigure locales
-sudo dpkg-reconfigure tzdata
+sudo raspi-config
 ```
 
-Note: To modify the wifi config edit the file `/etc/wpa_supplicant/wpa_supplicant.conf`
+Note: To modify the hostname or wifi connection edit the file `/boot/machine.local`

@@ -42,7 +42,7 @@ do_wifi_country() { # Adapted from raspi-config script
 
   IFS="/"
   value=$(tail -n +26 /usr/share/zoneinfo/iso3166.tab | tr '\t' '/' | tr '\n' '/')
-  COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 "$value" 3>&1 1>&2 2>&3)
+  COUNTRY=$(whiptail --menu "Select the country in which the Pi is to be used" 20 60 10 ${value} 3>&1 1>&2 2>&3)
   if [ $? -eq 0 ];then
     if [ -e /etc/wpa_supplicant/wpa_supplicant.conf ]; then
         if sudo grep -q "^country=" /etc/wpa_supplicant/wpa_supplicant.conf ; then
@@ -82,7 +82,7 @@ while getopts :i:n:p:f:uh FLAG ; do
     p) SERVER_PORT=$OPTARG
       ;;
 
-    f) INSTALLER_FILE=$OPTARG
+    f) INSTALLER_FILE=$(cd $(dirname "$OPTARG") ; pwd)/"$OPTARG" # Need full path to installer file
       ;;
 
     \?) usage

@@ -1,3 +1,12 @@
+# Release 17.0.2 (7/Mar/2017)
+
+1. Versions build using PaperCut 17.x and above now have better support for on screen keyboards
+2. PaperCut supplied image now based on Raspbian 2017-03-02, plus any updates
+3. Fixed a bug when running the setup script with -f option
+4. Fixed a bug that stopped wifi country setup running during config setup
+
+
+
 # Release 16.4 (21/Feb/2017)
 
 1. Based on Jan/2017 release of Raspian

@@ -1,3 +1,12 @@
+# Release 17.2.4 (23/Aug/2017)
+
+1. Upgrade to Rasbian Strech (2017-08-16) http://downloads.raspberrypi.org/raspbian/release_notes.txt
+2. Very minor update to README to explain were config files are located
+3. Improved display of IP addresses on startup
+4. Increased image size to accomodate upgrade of Raspbian
+5. Improved partition sizing code (taken from raspi-config script)
+
+
 # Release 17.0.2 (7/Mar/2017)
 
 1. Versions build using PaperCut 17.x and above now have better support for on screen keyboards

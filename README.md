@@ -27,7 +27,7 @@ Run the script `runme -h` to get documentation.
 Run the setup script and follow the prompts.
 
 After the SD card image has been created it can be backed up and duplicated.
-    Edit the file machine.local to configure the network details and
+    Edit the file machine.local (on `/boot`) to configure the network details and
     Edit the file pc-connection.properties to specifiy the Papercut server details
 
 This script attempts to restrict users from running anything other than the Papercut release station software. To that end:

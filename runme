@@ -223,7 +223,7 @@ sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
 echo About to install X Windows and the Java runtime if required -- this may take some time
 sudo apt-get install -y xorg xinit openjdk-8-jre pwgen matchbox-keyboard
 sudo apt-get autoremove
-sudo apt-get autoclean
+sudo apt-get clean
 echo
 
 sudo sed -i -e '/\(trap.*2\)\|\(set.*\+m\)/d' /etc/profile

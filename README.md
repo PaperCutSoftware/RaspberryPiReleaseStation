@@ -13,7 +13,7 @@ It will also work with the large Raspian download.
 
 Once you have copied the Raspian image to your SD card
 you might want to prevent the Raspberry Pi from autosizing the disk image to fit the whole SD card.
-You can do this by mounting the SD card in your laptop of desktop workstation and editing the file `cmdline.txt`.
+You can do this by mounting the SD card in your laptop or desktop workstation and editing the file `cmdline.txt`.
 Remove the text `init=/usr/lib/raspi-config/init_resize.sh`
 
 Insert the SD card into the Raspberry Pi and boot.

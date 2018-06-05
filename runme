@@ -221,7 +221,7 @@ echo
 sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
 
 echo About to install X Windows and the Java runtime if required -- this may take some time
-sudo apt-get install -y xorg xinit openjdk-8-jre pwgen matchbox-keyboard
+sudo apt-get install -y xorg xinit openjdk-8-jre pwgen matchbox-keyboard unclutter
 sudo apt-get autoremove
 sudo apt-get clean
 echo
@@ -359,6 +359,15 @@ fi
 EOF
 
 fi
+touch $PP_HOME/hidecursor.sh
+chown $PP_USER:$PP_USER $PP_HOME/hidecursor.sh
+chmod a+x $PP_HOME/hidecursor.sh
+echo "$PP_HOME/hidecursor.sh" |sudo tee -a "$PP_HOME/release/pc-release-linux.sh" > /dev/null
+
+cat <<EOT >> $PP_HOME/hidecursor.sh
+export DISPLAY=:0.0
+hidecursor -idle 0.01 -root -onescreen -jitter 1 &
+EOT
 
 echo 'xinit ~/release/pc-release-linux.sh -- vt$XDG_VTNR ;exit'|sudo tee -a  "$PP_HOME/.profile" > /dev/null
 

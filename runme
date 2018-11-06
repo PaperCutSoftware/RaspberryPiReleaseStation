@@ -19,7 +19,7 @@ UPGRADE=""  # Default to full install
 SERVER_PORT=9191      # Default secure port
 SERVER_IP="Edit Me"   # Prompt System Admin after install
 SERVER_NAME="Edit Me" # Prompt System Admin after install
-DOWNLOAD_URL=http://cdn.papercut.com/files/pcng/current/pcng-setup-linux-x64.sh
+DOWNLOAD_URL=https://www.papercut.com/api/product/ng/latest/linux-x64/
 
 PP_USER="papercut"  # User account to own and run papecut
 

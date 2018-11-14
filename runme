@@ -204,7 +204,7 @@ fi
 if [[ -z "$INSTALLER_FILE" ]] ; then
   echo About to download the latest PaperCut installer file. This will take some time
   echo
-  INSTALLER_FILE=/tmp/${DOWNLOAD_URL##*/}
+  INSTALLER_FILE=/tmp/installer.sh
   wget $DOWNLOAD_URL  -O $INSTALLER_FILE  --progress=dot:giga
 fi
 

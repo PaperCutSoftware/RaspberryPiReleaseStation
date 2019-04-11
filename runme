@@ -217,6 +217,7 @@ chmod aog+x "$INSTALLER_FILE"
 
 echo Adding Debian Stretch Backports for Java 11 support
 echo
+
 sudo wget https://ftp-master.debian.org/keys/archive-key-8.asc -O /tmp/archive-key-8.asc
 sudo apt-key add /tmp/archive-key-8.asc
 echo 'deb http://httpredir.debian.org/debian stretch-backports main contrib non-free' | sudo tee -a /etc/apt/sources.list.d/debian-backports.list

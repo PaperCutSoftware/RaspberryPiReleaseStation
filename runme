@@ -215,13 +215,20 @@ fi
 
 chmod aog+x "$INSTALLER_FILE"
 
+echo Adding Debian Stretch Backports for Java 11 support
+echo
+
+sudo wget https://ftp-master.debian.org/keys/archive-key-8.asc -O /tmp/archive-key-8.asc
+sudo apt-key add /tmp/archive-key-8.asc
+echo 'deb http://httpredir.debian.org/debian stretch-backports main contrib non-free' | sudo tee -a /etc/apt/sources.list.d/debian-backports.list
+
 echo About to upgrade Raspian to the latest version -- this may take some time
 echo
 
 sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
 
 echo About to install X Windows and the Java runtime if required -- this may take some time
-sudo apt-get install -y xorg xinit openjdk-8-jre pwgen matchbox-keyboard
+sudo apt-get install -y xorg xinit openjdk-11-jre pwgen matchbox-keyboard
 sudo apt-get autoremove
 sudo apt-get clean
 echo
@@ -541,8 +548,8 @@ EOF
 fi
 
 
-# Enable ssh server (Requried for Raspian after November 2016)								      
-sudo touch /boot/ssh									      
+# Enable ssh server (Requried for Raspian after November 2016)
+sudo touch /boot/ssh
 
 echo 'Setup complete. Please change the  password for '"$USER"' if not already done'
 ask "Please press any key to reboot the Raspberry Pi"

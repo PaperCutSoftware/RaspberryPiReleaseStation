@@ -337,7 +337,9 @@ echo -n "Network hostname is "
 hostname
 echo -n "Network IP addresses are "
 hostname -I
-read -p "Press any key to continue" -n 1 < /dev/tty
+echo
+
+read -t 10 -p "Press any key to continue or wait 10 seconds" -n 1 < /dev/tty
 
 if [[ -e /boot/prompt4Locale ]] ; then
     echo

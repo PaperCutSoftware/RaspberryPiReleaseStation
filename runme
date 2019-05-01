@@ -298,15 +298,22 @@ sudo chown $PP_USER:$PP_USER /var/log/release-station.log
 sudo chown $PP_USER:$PP_USER $PP_HOME/release-station.log
 
 if [[ -z "$UPGRADE" ]] ; then
-
-  sudo tee  /boot/pc-connection.properties <<EOF
+    if [[ -f "/boot/pc-connection.properties" ]] ; then
+        echo "/boot/pc-connection.properties already present not overwriting"
+    else
+        sudo tee /boot/pc-connection.properties <<EOF
 server-ip=$SERVER_IP
 server-port=$SERVER_PORT
 server-name=$SERVER_NAME
 EOF
+    fi
 
-  sudo mv $PP_HOME/release/config.properties  /boot/pc-config.properties
-  # sudo mv $PP_HOME/release/client-machine-aliases.properties /boot/client-machine-aliases.properties
+    if [[ -f "/boot/pc-config.properties" ]] ; then
+        echo "/boot/pc-config.properties already present not overwriting"
+    else
+        sudo mv $PP_HOME/release/config.properties  /boot/pc-config.properties
+        # sudo mv $PP_HOME/release/client-machine-aliases.properties /boot/client-machine-aliases.properties
+    fi
 fi
 
 

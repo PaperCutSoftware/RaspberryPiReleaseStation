@@ -400,6 +400,10 @@ EOF
 
 if [[ -f "/boot/machine.local" ]] ; then
 
+    echo "/boot/machine.local already present not overwriting"
+
+else
+
     echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
 
     echo

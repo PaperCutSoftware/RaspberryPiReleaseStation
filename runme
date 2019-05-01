@@ -16,7 +16,7 @@ _PART_SIZE='+3.5G' # Used by fdisk, root  partition size
 
 UPGRADE=""  # Default to full install
 
-LOCALE_NEXT_BOOT="" #Don't force locale at next boot since this script handles locale
+LOCALE_NEXT_BOOT=""   # Don't force locale at next boot since this script handles locale
 
 SERVER_PORT=9191      # Default secure port
 SERVER_IP="Edit Me"   # Prompt System Admin after install

@@ -398,33 +398,35 @@ Section "ServerFlags"
 EndSection
 EOF
 
-echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
+if [[ -f "/boot/machine.local" ]] ; then
 
-echo
-echo Host name management
-echo ====================
-echo
-echo There are three options:
-echo "Keep the current hostname \"$(hostname)\""
-echo "Change to a fixed hostname of your choosing"
-echo "Have the Pi dynamically allocate a a hostname based on the CPU serial number at boot time"
-echo
-echo
+    echo We can put some host setttings in the /boot/machine.local and you can edit them on your laptop as needed
 
-dynhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)'
+    echo
+    echo Host name management
+    echo ====================
+    echo
+    echo There are three options:
+    echo "Keep the current hostname \"$(hostname)\""
+    echo "Change to a fixed hostname of your choosing"
+    echo "Have the Pi dynamically allocate a a hostname based on the CPU serial number at boot time"
+    echo
+    echo
 
-select selection in "Keep the current hostname \"$(hostname)\"" \
-                    "Provide a new hostname" \
-                    "CPU serial number based hostname" ; do
-    case "$REPLY" in
-        1) newhostname=$(hostname) ; break ;;
-        2) newhostname=$(ask "Please provide new hostname ") ; break ;;
-        3) newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)' ; break;;
-        *) echo "$selection is invalid. Please select from list" ;;
-    esac
-done
+    dynhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)'
 
-sudo tee /boot/machine.local <<EOF
+    select selection in "Keep the current hostname \"$(hostname)\"" \
+                        "Provide a new hostname" \
+                        "CPU serial number based hostname" ; do
+        case "$REPLY" in
+            1) newhostname=$(hostname) ; break ;;
+            2) newhostname=$(ask "Please provide new hostname ") ; break ;;
+            3) newhostname=$'rpi$(sed -nre \'/^Serial\t\t: ........(........)$/s//\\1/p\' /proc/cpuinfo)' ; break;;
+            *) echo "$selection is invalid. Please select from list" ;;
+        esac
+    done
+
+    sudo tee /boot/machine.local <<EOF
 # Edit this file and reboot the Pi.
 # NB Insert the SD card into a workstation and you can edit the file as well
 
@@ -437,6 +439,8 @@ newhostname=$newhostname  # Host for /etc/host
 # TODO -- add example here.
 #
 EOF
+
+fi
 
 cat <<'EOF' | sudo tee /usr/local/sbin/config-hostname > /dev/null
 #!/bin/sh

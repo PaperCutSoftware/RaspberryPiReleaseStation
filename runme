@@ -16,6 +16,8 @@ _PART_SIZE='+3.5G' # Used by fdisk, root  partition size
 
 UPGRADE=""  # Default to full install
 
+LOCALE_NEXT_BOOT=""   # Don't force locale at next boot since this script handles locale
+
 SERVER_PORT=9191      # Default secure port
 SERVER_IP="Edit Me"   # Prompt System Admin after install
 SERVER_NAME="Edit Me" # Prompt System Admin after install
@@ -109,6 +111,7 @@ usage() {
     echo '-f is the name of the PaperCut installer file, If not present the script will attempt to download an installer'
     echo '-u Only upgrade the software'
     echo '-s Skip the check of free disk space. Useful with -u'
+    echo '-l Force Locale Settings at the Next Boot. Useful for preparing image or install to be used by others.'
     echo '-h Print this help text'
     exit
 }
@@ -137,13 +140,16 @@ do_wifi_country() { # Adapted from raspi-config script
 }
 
 # Main
-while getopts :i:n:p:f:uh FLAG ; do
+while getopts :i:n:p:f:l:uh FLAG ; do
     case $FLAG in
 
     h) usage
       ;;
 
     u) UPGRADE=YES
+      ;;
+
+    l) LOCALE_NEXT_BOOT=YES
       ;;
 
     s) FREESPACEWANTED=""
@@ -334,7 +340,9 @@ fi
 sudo sed -i -e '/pc-release-linux.sh/d' $PP_HOME/.profile
 
 # Force locale etc setting on 1st boot
-sudo touch /boot/prompt4Locale
+if [[ -n $LOCALE_NEXT_BOOT ]] ; then
+    sudo touch /boot/prompt4Locale
+fi
 
 if ! grep "prompt4Locale" $PP_HOME/.profile ; then
 

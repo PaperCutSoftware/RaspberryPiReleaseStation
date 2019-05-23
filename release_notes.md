@@ -1,3 +1,9 @@
+# Release 19.0.5  (23/May/2019)
+
+1. Upgraded to Rasbian Strech (2019-04-08) http://downloads.raspberrypi.org/raspbian/release_notes.txt
+2. Upgraded to latest version of PaperCut 19.0.5 (Build 49683)
+3. Secure mode enabled by default
+
 # Release 17.3.3  (28/Sept/2017)
 
 1. Upgrade to Rasbian Strech (2017-09-07) http://downloads.raspberrypi.org/raspbian/release_notes.txt

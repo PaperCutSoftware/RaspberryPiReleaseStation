@@ -330,13 +330,15 @@ for i in connection.properties config.properties ; do
 done
 
 # Make Pi boot into user papercut text mode
-if  command -v systemctl > /dev/null && systemctl | grep -q '^ *\-\.mount' ; then
-    sudo systemctl set-default multi-user.target
-    sudo cp  /etc/systemd/system/autologin@.service  /etc/systemd/system/autologin_$PP_USER@.service
-    sudo sed -i -e "s/--autologin \+pi/--autologin $PP_USER/"  /etc/systemd/system/autologin_$PP_USER@.service
-    [[ -e /etc/systemd/system/getty.target.wants/getty@tty1.service ]] &&
-      sudo rm /etc/systemd/system/getty.target.wants/getty@tty1.service
-    sudo ln -fs /etc/systemd/system/autologin_$PP_USER@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+if  command -v systemctl > /dev/null && systemctl | grep -q '^ *\-\.mount' &&
+  [ $(cut -d . -f 1 /etc/debian_version)  -ge 8 ]; then
+        sudo systemctl set-default multi-user.target
+        sudo ln -fs /lib/systemd/system/getty@.service /etc/systemd/system/getty.target.wants/getty@tty1.service
+        sudo tee  /etc/systemd/system/getty@tty1.service.d/autologin.conf << EOF
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin $PP_USER --noclear %I \$TERM
+EOF
 else
     echo Upgrade to current version of Debian failed. Can\'t use systemd
     exit -1

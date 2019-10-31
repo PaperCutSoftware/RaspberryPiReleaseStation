@@ -1,3 +1,9 @@
+# Release 19.1.5  (31/Oct/2019)
+
+1. Updated to Buster with Pi 4 support
+2. Fixed problem with new systemd setup
+3. Upgraded to PaperCut MF/NG 19.1.5
+
 # Release 19.0.5  (23/May/2019)
 
 1. Upgraded to Rasbian Strech (2019-04-08) http://downloads.raspberrypi.org/raspbian/release_notes.txt

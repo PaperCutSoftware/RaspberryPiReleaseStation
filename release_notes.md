@@ -1,3 +1,8 @@
+# Release 21.0.0  (26/Mar/2021)
+
+1. Fixed problem with flags not being read correctly
+2. Upgraded to PaperCut MF/NG 21.0.0
+
 # Release 19.1.5  (31/Oct/2019)
 
 1. Updated to Buster with Pi 4 support

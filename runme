@@ -140,7 +140,7 @@ do_wifi_country() { # Adapted from raspi-config script
 }
 
 # Main
-while getopts :i:n:p:f:l:uh FLAG ; do
+while getopts i:n:p:f:huls FLAG ; do
     case $FLAG in
 
     h) usage

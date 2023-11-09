@@ -2,11 +2,9 @@
 
 This script (`runme`) will install and setup a PapeCut release station onto a copy of Raspian GNU/Linux.
 
-Use of this script is optional. Papercut Provide a pre-created image for download from their website (created using this script).
+This script is published for the curious, or people who wish to build their own PaperCut release station image. 
 
-http://www.papercut.com/tour/raspberry-pi/
-
-This script is published for the curious, or people who wish to build their own PaperCut release station image.
+Use of this script is optional. This script is supplied as-is and is not formally supported by PaperCut.
 
 This scripts works well with the Light download of Raspian from https://www.raspberrypi.org/downloads/raspbian/.
 It will also work with the large Raspian download.
